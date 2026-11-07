@@ -62,7 +62,7 @@ def parts(raw: bytes) -> tuple[str, str]:
 
 def filename(name: str) -> str:
     # Legacy keys may contain path separators or Windows device names.
-    if (name.startswith((".", "~relay-")) or ntpath.isreserved(name)
+    if (name.startswith((".", "~relay-")) or ":" in name or ntpath.isreserved(name)
             or re.search(r'[/\\#\[\]|^]', name) or len(name.encode()) > 200):
         return "~relay-" + sha256(entry_name(name).encode()).hexdigest() + ".md"
     return name + ".md"
@@ -79,8 +79,9 @@ def notes(root: Path, category: str | None = None):
             title = path.stem
             if title.startswith("~relay-"):
                 header, _ = parts(path.read_bytes())
-                properties = yaml.safe_load(header.splitlines()[1:-1] and "\n".join(header.splitlines()[1:-1]) or "") or {}
-                title = properties.get("relay_name", title)
+                properties = yaml.safe_load("\n".join(header.splitlines()[1:-1]))
+                if isinstance(properties, dict) and isinstance(properties.get("relay_name"), str):
+                    title = properties["relay_name"]
             yield title, path
 
 
@@ -99,7 +100,10 @@ def write_note(path: Path, header: str, body: str, previous: bytes | None) -> No
     with NamedTemporaryFile(dir=path.parent, suffix=".tmp", delete=False) as handle:
         temporary = Path(handle.name)
     try:
-        temporary.write_bytes((header + body).encode("utf-8"))
+        if header and not header.endswith("\n"):
+            header += "\n"
+        encoding = "utf-8-sig" if previous and previous.startswith(b"\xef\xbb\xbf") else "utf-8"
+        temporary.write_bytes((header + body).encode(encoding))
         if previous is None:
             # An exclusive link publishes the finished file without replacing a concurrent creation.
             os.link(temporary, path)

@@ -1,7 +1,6 @@
 from mcp.server import MCPServer
 
 from tools import load_tools
-
 from tools._migrate_facts import migrate_facts
 
 migrate_facts()
