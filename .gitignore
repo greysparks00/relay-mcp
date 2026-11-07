@@ -114,3 +114,6 @@ dmypy.json
 
 # Streamlit
 .streamlit/config.toml
+
+# Local Relay assistant data
+/data/
