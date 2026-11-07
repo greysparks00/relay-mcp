@@ -12,7 +12,7 @@ class ChangeScreenTests(IsolatedAsyncioTestCase):
     def setUp(self):
         self.requests = []
         self.status = 202
-        self.reply = {"screen_id": 1, "status": "queued"}
+        self.reply = {"screen_id": 1, "status": "accepted"}
         case = self
 
         class Receiver(BaseHTTPRequestHandler):
@@ -40,7 +40,7 @@ class ChangeScreenTests(IsolatedAsyncioTestCase):
         result = await change_screen(1, "dashboard", text)
         self.assertEqual(self.requests, [("/v1/screens/1/state", "Bearer fixture-key",
                                          {"template": "dashboard", "text": text})])
-        self.assertEqual(result, {"screen_id": 1, "template": "dashboard", "status": "queued"})
+        self.assertEqual(result, {"screen_id": 1, "template": "dashboard", "status": "accepted"})
 
     async def test_rejection_and_wrong_screen_are_not_success(self):
         self.status = 404
@@ -48,5 +48,25 @@ class ChangeScreenTests(IsolatedAsyncioTestCase):
             await change_screen(1, "dashboard")
         self.status = 200
         self.reply = {"screen_id": 2, "status": "accepted"}
+        with self.assertRaisesRegex(ValueError, "acknowledgement"):
+            await change_screen(1, "dashboard")
+
+    async def test_template_only_and_comparison_prompt(self):
+        await change_screen(1, "google_calendar_view")
+        prompt = "I want to compare a 3060 Ti vs a 4060 Ti"
+        await change_screen(1, "comparison", prompt)
+        self.assertEqual([body for _, _, body in self.requests], [
+            {"template": "google_calendar_view", "text": ""},
+            {"template": "comparison", "text": prompt},
+        ])
+
+    async def test_offline_is_an_error_and_is_not_retried(self):
+        self.status = 409
+        with self.assertRaisesRegex(ValueError, "offline"):
+            await change_screen(1, "dashboard")
+        self.assertEqual(len(self.requests), 1)
+
+    async def test_queued_ack_is_rejected(self):
+        self.reply = {"screen_id": 1, "status": "queued"}
         with self.assertRaisesRegex(ValueError, "acknowledgement"):
             await change_screen(1, "dashboard")
