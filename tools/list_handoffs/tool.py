@@ -1,13 +1,12 @@
-from tools._store import database
+from tools._vault import HANDOFFS, folder_notes, updated_at, vault
 
 
 def list_handoffs(limit: int = 10, offset: int = 0) -> list[dict[str, str]]:
     """List saved Relay conversation topics, most recently updated first. Use a topic with resume_handoff."""
-    if not 1 <= limit <= 50 or offset < 0 or offset > 2**63 - 1:
-        raise ValueError("Use a limit of 1 to 50 and a nonnegative SQLite offset.")
-    with database() as db:
-        rows = db.execute("""
-            SELECT name AS topic, updated_at FROM entries WHERE kind = 'handoff'
-            ORDER BY updated_at DESC, name LIMIT ? OFFSET ?
-        """, (limit, offset))
-        return [dict(row) for row in rows]
+    if not 1 <= limit <= 50 or offset < 0:
+        raise ValueError("Use a limit of 1 to 50 and a nonnegative offset.")
+    with vault() as root:
+        rows = [{"topic": name, "updated_at": updated_at(path)} for name, path in folder_notes(root / HANDOFFS)]
+        rows.sort(key=lambda row: row["topic"].casefold())
+        rows.sort(key=lambda row: row["updated_at"], reverse=True)
+        return rows[offset:offset + limit]

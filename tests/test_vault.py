@@ -4,8 +4,10 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from tools._migrate_facts import migrate_facts
-from tools._store import database, save
+from tools.delete_handoff.tool import delete_handoff
+from tools.list_handoffs.tool import list_handoffs
+from tools.resume_handoff.tool import resume_handoff
+from tools.save_handoff.tool import save_handoff
 from tools.edit_fact.tool import edit_fact
 from tools.forget_fact.tool import forget_fact
 from tools.read_fact.tool import read_fact
@@ -21,29 +23,23 @@ class VaultTests(TestCase):
             "RELAY_MCP_DATA_DIR": temp, "RELAY_MCP_VAULT_DIR": str(self.root)
         }))
 
-    def test_migration_preserves_legacy_keys_and_does_not_restore_forgotten_facts(self):
-        save("fact", "../CON", "Original")
-        save("handoff", "next", "Keep this")
-        migrate_facts()
-        self.assertEqual(read_fact("../CON")["fact"].strip(), "Original")
-        self.assertEqual(len(list((self.root / "Inbox").glob("*.md"))), 1)
-        forget_fact("../CON")
-        migrate_facts()
-        self.assertEqual(recall_facts(""), [])
-        with database() as db:
-            self.assertEqual(db.execute("SELECT body FROM entries").fetchone()[0], "Keep this")
-
-    def test_conflicting_migration_is_recoverable(self):
-        remember_fact("existing", "New version")
-        save("fact", "existing", "Old version")
-        with self.assertRaisesRegex(ValueError, "differs"):
-            migrate_facts()
-        self.assertEqual(read_fact("existing")["fact"].strip(), "New version")
-        with database() as db:
-            self.assertEqual(db.execute("SELECT body FROM entries").fetchone()[0], "Old version")
-        (self.root / "Inbox/existing.md").rename(self.root / "Inbox/renamed.md")
-        migrate_facts()
-        self.assertEqual(len(recall_facts("version")), 2)
+    def test_handoffs_are_editable_notes_separate_from_facts(self):
+        topic = "../CON"
+        remember_fact(topic, "Fact")
+        save_handoff(topic, "Checkpoint")
+        note, = (self.root / "Handoffs").glob("*.md")
+        note.write_text(note.read_text().replace("Checkpoint", "Edited by hand"))
+        handoff = resume_handoff(topic)
+        self.assertEqual(handoff["summary"], "Edited by hand")
+        self.assertEqual(list_handoffs(), [{"topic": topic.casefold(), "updated_at": handoff["updated_at"]}])
+        save_handoff(topic, "Revised")
+        self.assertEqual(resume_handoff(topic)["summary"], "Revised")
+        self.assertEqual(len(recall_facts("")), 1)
+        delete_handoff(topic)
+        self.assertFalse(note.exists())
+        self.assertEqual(read_fact(topic)["fact"].strip(), "Fact")
+        with self.assertRaisesRegex(ValueError, "No handoff"):
+            resume_handoff(topic)
 
     def test_external_edits_properties_and_moves(self):
         remember_fact("Editor", "Initial", "Preferences")

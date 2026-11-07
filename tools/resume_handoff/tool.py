@@ -1,13 +1,12 @@
-from tools._store import database, entry_name
+from tools._vault import HANDOFFS, entry_name, find_named, folder_notes, parts, updated_at, vault
 
 
 def resume_handoff(topic: str) -> dict[str, str]:
-    """Read a saved Relay conversation checkpoint by its exact topic name."""
-    with database() as db:
-        row = db.execute("""
-            SELECT name AS topic, body AS summary, updated_at FROM entries
-            WHERE kind = 'handoff' AND name = ?
-        """, (entry_name(topic),)).fetchone()
-    if row is None:
-        raise ValueError("No handoff exists for this topic.")
-    return dict(row)
+    """Read the current Markdown summary of a conversation checkpoint by exact topic."""
+    key = entry_name(topic)
+    with vault() as root:
+        path = find_named(folder_notes(root / HANDOFFS), key)
+        if path is None:
+            raise ValueError("No handoff exists for this topic.")
+        _, body = parts(path.read_bytes())
+        return {"topic": key, "summary": body.rstrip("\r\n"), "updated_at": updated_at(path)}

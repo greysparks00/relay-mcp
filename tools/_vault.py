@@ -1,6 +1,7 @@
 """Store each Relay memory as a Markdown file in an Obsidian category folder."""
 
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from hashlib import sha256
 import json
 import ntpath
@@ -12,10 +13,21 @@ from tempfile import NamedTemporaryFile
 from filelock import FileLock
 import yaml
 
-from tools._store import entry_name
-
 CATEGORIES = ("Inbox", "Preferences", "People", "Projects", "Routines", "Reference")
+HANDOFFS = "Handoffs"
+VAULT_FOLDERS = (*CATEGORIES, HANDOFFS)
 PROJECT = Path(__file__).resolve().parents[1]
+
+
+def entry_name(name: str) -> str:
+    key = name.strip().casefold()
+    if not 1 <= len(key) <= 100:
+        raise ValueError("Use a name between 1 and 100 characters.")
+    return key
+
+
+def updated_at(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def vault_root() -> Path:
@@ -42,7 +54,7 @@ def vault():
     lock = root / ".relay.lock"
     require_local(lock)
     with FileLock(str(lock), timeout=10):
-        for name in CATEGORIES:
+        for name in VAULT_FOLDERS:
             folder = root / name
             require_local(folder)
             folder.mkdir(exist_ok=True)
@@ -61,36 +73,44 @@ def parts(raw: bytes) -> tuple[str, str]:
 
 
 def filename(name: str) -> str:
-    # Legacy keys may contain path separators or Windows device names.
+    # Note names may contain path separators or Windows device names.
     if (name.startswith((".", "~relay-")) or ":" in name or ntpath.isreserved(name)
             or re.search(r'[/\\#\[\]|^]', name) or len(name.encode()) > 200):
         return "~relay-" + sha256(entry_name(name).encode()).hexdigest() + ".md"
     return name + ".md"
 
 
+def folder_notes(folder: Path):
+    for path in folder.iterdir():
+        if path.name.startswith(".") or path.suffix.casefold() != ".md":
+            continue
+        if path.is_symlink() or path.is_junction() or not path.is_file():
+            continue
+        title = path.stem
+        if title.startswith("~relay-"):
+            header, _ = parts(path.read_bytes())
+            properties = yaml.safe_load("\n".join(header.splitlines()[1:-1]))
+            if isinstance(properties, dict) and isinstance(properties.get("relay_name"), str):
+                title = properties["relay_name"]
+        yield title, path
+
+
 def notes(root: Path, category: str | None = None):
     folders = (category_name(category),) if category is not None else CATEGORIES
     for folder in folders:
-        for path in (root / folder).iterdir():
-            if path.name.startswith(".") or path.suffix.casefold() != ".md":
-                continue
-            if path.is_symlink() or path.is_junction() or not path.is_file():
-                continue
-            title = path.stem
-            if title.startswith("~relay-"):
-                header, _ = parts(path.read_bytes())
-                properties = yaml.safe_load("\n".join(header.splitlines()[1:-1]))
-                if isinstance(properties, dict) and isinstance(properties.get("relay_name"), str):
-                    title = properties["relay_name"]
-            yield title, path
+        yield from folder_notes(root / folder)
 
 
-def find(root: Path, name: str, category: str | None):
+def find_named(entries, name: str):
     key = entry_name(name)
-    matches = [path for title, path in notes(root, category) if title.casefold() == key]
+    matches = [path for title, path in entries if title.casefold() == key]
     if len(matches) > 1:
         raise ValueError("Several notes match this name. Choose a category or rename a duplicate.")
     return matches[0] if matches else None
+
+
+def find(root: Path, name: str, category: str | None):
+    return find_named(notes(root, category), name)
 
 
 def write_note(path: Path, header: str, body: str, previous: bytes | None) -> None:
@@ -115,10 +135,10 @@ def write_note(path: Path, header: str, body: str, previous: bytes | None) -> No
         temporary.unlink(missing_ok=True)
 
 
-def create_note(root: Path, category: str, name: str, body: str) -> Path:
+def create_note(folder: Path, name: str, body: str) -> Path:
     title = name.strip()
     entry_name(title)
-    path = root / category_name(category) / filename(title)
+    path = folder / filename(title)
     header = "---\ntags:\n  - relay/memory\n"
     if path.stem.startswith("~relay-"):
         header += "relay_name: " + json.dumps(title, ensure_ascii=False) + "\n"
@@ -126,14 +146,18 @@ def create_note(root: Path, category: str, name: str, body: str) -> Path:
     return path
 
 
-def remember(root: Path, name: str, fact: str, category: str | None) -> None:
+def save_body(folder: Path, name: str, fact: str, path: Path | None) -> None:
     fact = fact.strip()
     if not 1 <= len(fact) <= 4000:
         raise ValueError("Content must be between 1 and 4000 characters.")
-    path = find(root, name, category)
     if path is None:
-        create_note(root, category or "Inbox", name, fact + "\n")
+        create_note(folder, name, fact + "\n")
     else:
         previous = path.read_bytes()
         header, _ = parts(previous)
         write_note(path, header, fact + "\n", previous)
+
+
+def remember(root: Path, name: str, fact: str, category: str | None) -> None:
+    folder = category_name(category) if category is not None else "Inbox"
+    save_body(root / folder, name, fact, find(root, name, category))

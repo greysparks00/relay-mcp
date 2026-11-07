@@ -3,9 +3,11 @@ from mcp.server import MCPServer
 
 from health import register_health
 from tools import load_tools
-from tools._migrate_facts import migrate_facts
+from tools._vault import vault
 
-migrate_facts()
+# Initialize the vault before accepting health probes or tool requests.
+with vault():
+    pass
 mcp = MCPServer("Relay")
 failed_tools = load_tools(mcp)
 register_health(mcp, failed_tools)
