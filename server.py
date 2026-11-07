@@ -1,12 +1,14 @@
 import uvicorn
 from mcp.server import MCPServer
 
+from health import register_health
 from tools import load_tools
 from tools._migrate_facts import migrate_facts
 
 migrate_facts()
 mcp = MCPServer("Relay")
-load_tools(mcp)
+failed_tools = load_tools(mcp)
+register_health(mcp, failed_tools)
 
 
 def run_server(port: int = 8000) -> None:
