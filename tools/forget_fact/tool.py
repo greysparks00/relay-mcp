@@ -1,9 +1,11 @@
-from tools._store import database, entry_name
+from tools._vault import find, vault
 
 
-def forget_fact(name: str) -> str:
-    """Delete one saved Relay fact by exact name when the user asks to forget it."""
-    key = entry_name(name)
-    with database() as db:
-        result = db.execute("DELETE FROM entries WHERE kind = 'fact' AND name = ?", (key,))
-        return f"Forgot {key}." if result.rowcount else f"No fact named {key}."
+def forget_fact(name: str, category: str | None = None) -> str:
+    """Delete a memory note by exact name when the user asks to forget it. Supply its category for duplicate names."""
+    with vault() as root:
+        path = find(root, name, category)
+        if path is None:
+            return f"No fact named {name}."
+        path.unlink()
+    return f"Forgot {name}."
