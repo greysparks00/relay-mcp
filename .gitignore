@@ -117,3 +117,9 @@ dmypy.json
 
 # Local Relay assistant data
 /data/
+ 
+# Commit the vault layout; keep personal notes and Obsidian settings local.
+/vault/**
+!/vault/Home.md
+!/vault/*/
+!/vault/*/.gitkeep
