@@ -12,6 +12,9 @@ def load_tools(server: MCPServer) -> list[str]:
     for folder in sorted(Path(__file__).parent.iterdir()):
         if not folder.is_dir() or folder.name.startswith(("_", ".")):
             continue
+        # Removing a tool can leave its bytecode cache in an untracked directory.
+        if not any(entry.name != "__pycache__" for entry in folder.iterdir()):
+            continue
         try:
             if not folder.name.isidentifier() or not (folder / "tool.py").is_file():
                 raise ValueError("Expected a Python tool folder with tool.py")

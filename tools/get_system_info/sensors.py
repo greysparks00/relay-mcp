@@ -94,6 +94,22 @@ def windows_sensors() -> dict:
         return data
 
 
+def linux_cpu_zones(root: Path = Path("/sys/class/thermal")) -> list[dict]:
+    """Some ARM boards expose CPU temperatures through thermal zones only."""
+    readings = []
+    for zone in sorted(root.glob("thermal_zone*")):
+        try:
+            label = (zone / "type").read_text().strip()
+            if label.lower().replace("-", "_") not in {"cpu_thermal", "cpu_thermal_zone", "cpu_therm"}:
+                continue
+            value = number((zone / "temp").read_text().strip())
+            if value is not None:
+                readings.append({"sensor": label, "celsius": value / 1000})
+        except OSError:
+            continue
+    return readings
+
+
 def hardware_snapshot(include_gpu: bool) -> tuple[list[dict], list[dict]]:
     cards = nvidia_gpus() if include_gpu else []
     cpu = []
@@ -129,4 +145,6 @@ def hardware_snapshot(include_gpu: bool) -> tuple[list[dict], list[dict]]:
                     value = number(sensor.current)
                     if value is not None:
                         cpu.append({"sensor": sensor.label or chip, "celsius": value})
+    if os.name == "posix" and not cpu:
+        cpu = linux_cpu_zones()
     return cpu, cards

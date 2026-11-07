@@ -22,6 +22,17 @@ def processor_name() -> str:
                 return winreg.QueryValueEx(key, "ProcessorNameString")[0].strip()
         except OSError:
             pass
+    elif platform.system() == "Linux":
+        try:
+            fields = {}
+            for line in Path("/proc/cpuinfo").read_text().splitlines():
+                key, _, value = line.partition(":")
+                fields.setdefault(key.strip(), value.strip())
+            for key in ("model name", "Hardware", "Processor"):
+                if fields.get(key):
+                    return fields[key]
+        except OSError:
+            pass
     return platform.processor() or platform.machine()
 
 

@@ -32,7 +32,7 @@ def updated_at(path: Path) -> str:
 
 def vault_root() -> Path:
     base = Path(os.environ.get("RELAY_MCP_DATA_DIR") or PROJECT)
-    return Path(os.environ.get("RELAY_MCP_VAULT_DIR") or base / "vault").resolve()
+    return Path(os.environ.get("RELAY_MCP_VAULT_DIR") or base / "vault").expanduser().resolve()
 
 
 def category_name(value: str) -> str:
