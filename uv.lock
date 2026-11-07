@@ -456,6 +456,7 @@ dependencies = [
     { name = "filelock" },
     { name = "mcp", extra = ["cli"] },
     { name = "pyyaml" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -463,6 +464,7 @@ requires-dist = [
     { name = "filelock", specifier = ">=4.2.9" },
     { name = "mcp", extras = ["cli"], specifier = ">=2.3.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 
 [[package]]

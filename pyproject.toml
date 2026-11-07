@@ -6,4 +6,5 @@ dependencies = [
     "filelock>=4.2.9",
     "mcp[cli]>=2.3.0",
     "pyyaml>=6.0.3",
+    "uvicorn>=0.54.0",
 ]
