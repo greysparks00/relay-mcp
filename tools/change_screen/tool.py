@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from pydantic import Field
 
 
-def send_state(screen_id: int, template: str, text: str) -> dict:
+def send_content(screen_id: int, content: str) -> dict:
     url = urlsplit(os.environ.get("RELAY_DISPLAY_URL") or "http://127.0.0.1:8766")
     if (url.scheme not in {"http", "https"} or not url.hostname or url.username is not None
             or url.password is not None or url.query or url.fragment or url.path not in {"", "/"}):
@@ -23,8 +23,8 @@ def send_state(screen_id: int, template: str, text: str) -> dict:
 
     connection = (HTTPSConnection if url.scheme == "https" else HTTPConnection)(url.hostname, url.port, timeout=5)
     try:
-        body = json.dumps({"template": template, "text": text}, ensure_ascii=False).encode("utf-8")
-        connection.request("PUT", f"/v1/screens/{screen_id}/state", body, headers)
+        body = json.dumps({"id": screen_id, "content": content}, ensure_ascii=False).encode("utf-8")
+        connection.request("POST", "/v1/screens/send", body, headers)
         response = connection.getresponse()
         if response.status == 409:
             raise ValueError(f"Screen {screen_id} is offline. The coordinator discarded the request.")
@@ -38,18 +38,17 @@ def send_state(screen_id: int, template: str, text: str) -> dict:
         if len(raw) > 4096:
             raise ValueError("Oversized display acknowledgement.")
         ack = json.loads(raw)
-        if (not isinstance(ack, dict) or type(ack.get("screen_id")) is not int
-                or ack["screen_id"] != screen_id or ack.get("status") != "accepted"):
+        if (not isinstance(ack, dict) or type(ack.get("id")) is not int
+                or ack["id"] != screen_id or ack.get("status") != "accepted"):
             raise ValueError("Invalid display acknowledgement.")
-        return {"screen_id": screen_id, "template": template, "status": ack["status"]}
+        return {"id": screen_id, "status": ack["status"]}
     except (OSError, HTTPException) as error:
         raise ValueError("No acknowledgement from the display coordinator. Delivery is unconfirmed.") from error
     finally:
         connection.close()
 
 
-async def change_screen(screen_id: Annotated[int, Field(gt=0, le=2147483647)],
-                        template: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,63}$")],
-                        text: Annotated[str, Field(max_length=8192)] = "") -> dict:
-    """Ask the display coordinator to show a named template, e.g. dashboard, on a numbered screen. Provide optional literal text for the template. An offline screen returns an error. Accepted means forwarded to a connected screen; rendering is unconfirmed."""
-    return await asyncio.to_thread(send_state, screen_id, template, text)
+async def change_screen(id: Annotated[int, Field(gt=0, le=2147483647)],
+                        content: Annotated[str, Field(max_length=8192)] = "") -> dict:
+    """Send literal content to a registered screen by ID. Content may be a view name such as dashboard, a free-form request, or empty. Offline requests are discarded."""
+    return await asyncio.to_thread(send_content, id, content)
