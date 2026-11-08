@@ -6,6 +6,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import patch
 
 from tools.change_screen.tool import ComparisonScreen, TextScreen, change_screen
+from tools.set_screen_enabled.tool import set_screen_enabled
 
 
 class ChangeScreenTests(IsolatedAsyncioTestCase):
@@ -50,6 +51,14 @@ class ChangeScreenTests(IsolatedAsyncioTestCase):
         self.reply = {"id": 2, "status": "accepted"}
         with self.assertRaisesRegex(ValueError, "acknowledgement"):
             await change_screen(1, TextScreen(type="text", content="dashboard"))
+
+    async def test_sleep_requires_confirmation_from_the_kiosk(self):
+        with self.assertRaisesRegex(ValueError, "acknowledgement"):
+            await set_screen_enabled(1, False)
+        self.reply = {"id": 1, "status": "applied"}
+        self.assertEqual(await set_screen_enabled(1, True), self.reply)
+        self.assertEqual([request[2] for request in self.requests],
+                         [{"id": 1, "enabled": False}, {"id": 1, "enabled": True}])
 
     async def test_comparison_payload(self):
         screen = ComparisonScreen(type="comparison", option1="English", option2="Spanish")
