@@ -1,9 +1,14 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 import uvicorn
 from mcp.server import MCPServer
 
 from health import register_health
 from tools import load_tools
 from tools._vault import vault
+
+load_dotenv(Path(__file__).with_name(".env"))
 
 # Initialize the vault before accepting health probes or tool requests.
 with vault():
