@@ -9,7 +9,6 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 DisplayText = Annotated[str, Field(max_length=8192)]
 
 
@@ -31,9 +30,12 @@ def send_content(screen_id: int, screen: TextScreen | ComparisonScreen) -> dict:
     if (url.scheme not in {"http", "https"} or not url.hostname or url.username is not None
             or url.password is not None or url.query or url.fragment or url.path not in {"", "/"}):
         raise ValueError("RELAY_DISPLAY_URL must be an HTTP(S) origin.")
+
     if url.scheme == "http" and url.hostname not in {"127.0.0.1", "::1", "localhost"}:
         raise ValueError("Use HTTPS for a remote display coordinator, or use a loopback tunnel.")
+
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
     if token := os.environ.get("RELAY_DISPLAY_TOKEN"):
         headers["Authorization"] = f"Bearer {token}"
 
@@ -42,23 +44,35 @@ def send_content(screen_id: int, screen: TextScreen | ComparisonScreen) -> dict:
         body = json.dumps({"id": screen_id, "screen": screen.model_dump()}, ensure_ascii=False).encode("utf-8")
         connection.request("POST", "/v1/screens/send", body, headers)
         response = connection.getresponse()
+
         if response.status == 409:
             raise ValueError(f"Screen {screen_id} is offline. The coordinator discarded the request.")
+
         if response.status == 404:
             raise ValueError(f"The coordinator does not recognize screen {screen_id}.")
+
         if response.status in {401, 403}:
             raise ValueError("The display coordinator rejected Relay's credentials.")
+
         if response.status not in {200, 202}:
             raise ValueError(f"The display coordinator returned HTTP {response.status}.")
+
         raw = response.read(4097)
+
         if len(raw) > 4096:
             raise ValueError("Oversized display acknowledgement.")
+
         ack = json.loads(raw)
+
         if (not isinstance(ack, dict) or type(ack.get("id")) is not int
                 or ack["id"] != screen_id or ack.get("status") != "accepted"):
+
             raise ValueError("Invalid display acknowledgement.")
+
         return {"id": screen_id, "status": ack["status"]}
+
     except (OSError, HTTPException) as error:
+
         raise ValueError("No acknowledgement from the display coordinator. Delivery is unconfirmed.") from error
     finally:
         connection.close()
