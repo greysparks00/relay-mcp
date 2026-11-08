@@ -1,4 +1,4 @@
-"""Named countdowns shared by clients of this running Relay process."""
+# Named countdowns shared by clients of this running Relay process.
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta

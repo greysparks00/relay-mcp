@@ -1,4 +1,4 @@
-"""Download a current vault ZIP through an approved SSH host alias (stdlib only)."""
+# Download a current vault ZIP through an approved SSH host alias (stdlib only).
 
 import argparse
 from hashlib import file_digest
@@ -44,7 +44,7 @@ def pull(host: str, output: Path) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Download a current vault ZIP through an approved SSH host alias (stdlib only).')
     parser.add_argument("host", help="SSH host alias configured with the export-only key")
     parser.add_argument("output", type=Path, help="Local ZIP to refresh")
     parser.add_argument("--watch", type=int, metavar="SECONDS", help="Repeat while running")

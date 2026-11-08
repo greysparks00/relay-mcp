@@ -1,4 +1,4 @@
-"""Forward desired screen state to the separately deployed display coordinator."""
+# Forward desired screen state to the separately deployed display coordinator.
 
 import asyncio
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
@@ -78,7 +78,9 @@ def send_content(screen_id: int, screen: TextScreen | ComparisonScreen) -> dict:
         connection.close()
 
 
+# Choose text for explanations or messages, comparison for two alternatives. Use
+# {"type":"text","content":"..."} or {"type":"comparison","option1":"...","option2":"..."}.
+# Fill the fields with display-ready answers on any topic and name each alternative.
 async def change_screen(id: Annotated[int, Field(gt=0, le=2147483647)],
                         screen: TextScreen | ComparisonScreen) -> dict:
-    """Choose text for explanations or messages, comparison for two alternatives. Use {"type":"text","content":"..."} or {"type":"comparison","option1":"...","option2":"..."}. Fill the fields with display-ready answers on any topic and name each alternative."""
     return await asyncio.to_thread(send_content, id, screen)

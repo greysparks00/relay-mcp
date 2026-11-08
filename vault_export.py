@@ -1,4 +1,4 @@
-"""Export Relay's Markdown vault to stdout for a restricted OpenSSH key."""
+# Export Relay's Markdown vault to stdout for a restricted OpenSSH key.
 
 import os
 import stat

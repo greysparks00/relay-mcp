@@ -1,4 +1,4 @@
-"""Store each Relay memory as a Markdown file in an Obsidian category folder."""
+# Store each Relay memory as a Markdown file in an Obsidian category folder.
 
 from contextlib import contextmanager
 from datetime import UTC, datetime

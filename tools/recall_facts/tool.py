@@ -1,8 +1,9 @@
 from tools._vault import notes, parts, vault
 
 
+# Search memory note names and Markdown bodies. Optionally filter by category. Empty queries
+# list recent memories.
 def recall_facts(query: str, limit: int = 5, category: str | None = None) -> list[dict[str, str]]:
-    """Search memory note names and Markdown bodies. Optionally filter by category. Empty queries list recent memories."""
     if not 1 <= limit <= 10:
         raise ValueError("Limit must be between 1 and 10.")
     needle = query.strip().casefold()

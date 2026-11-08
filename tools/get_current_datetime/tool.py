@@ -1,6 +1,6 @@
 from datetime import datetime
 
 
+# Get the current date and time.
 def get_current_datetime() -> str:
-    """Get the current date and time."""
     return datetime.now().astimezone().isoformat()

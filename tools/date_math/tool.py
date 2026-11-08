@@ -14,8 +14,9 @@ def resolve_date(value: str, today: date) -> date:
     return date.fromisoformat(value)
 
 
+# Offset a date by signed days or weeks, or give an end date for a signed day count. Use ISO
+# dates, today, tomorrow, yesterday, or a weekday on or after today (server local time).
 def date_math(start: str = "today", days: int = 0, weeks: int = 0, end: str | None = None) -> dict:
-    """Offset a date by signed days or weeks, or give an end date for a signed day count. Use ISO dates, today, tomorrow, yesterday, or a weekday on or after today (server local time)."""
     today = date.today()
     first = resolve_date(start, today)
     if end is not None and (days or weeks):

@@ -1,4 +1,4 @@
-"""Dashboard readiness checks. A stopped process cannot answer an HTTP probe."""
+# Dashboard readiness checks. A stopped process cannot answer an HTTP probe.
 
 import asyncio
 import os

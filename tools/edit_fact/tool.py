@@ -1,8 +1,9 @@
 from tools._vault import find, parts, vault, write_note
 
 
+# Replace one exact, unique passage in a memory note. Read the note first. Other text and
+# properties are preserved.
 def edit_fact(name: str, old_text: str, new_text: str, category: str | None = None) -> str:
-    """Replace one exact, unique passage in a memory note. Read the note first. Other text and properties are preserved."""
     if not old_text:
         raise ValueError("Provide the passage to replace.")
     with vault() as root:

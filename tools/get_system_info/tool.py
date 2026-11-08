@@ -63,6 +63,8 @@ def snapshot(section: Section) -> dict:
     return result
 
 
+# Get live details of the Relay server computer: OS, CPU load and cores, RAM, system disk,
+# GPUs, VRAM and available Celsius temperatures. Choose a section for a targeted answer.
+# Empty sensor lists or null readings mean unavailable.
 async def get_system_info(section: Section = "overview") -> dict:
-    """Get live details of the Relay server computer: OS, CPU load and cores, RAM, system disk, GPUs, VRAM and available Celsius temperatures. Choose a section for a targeted answer. Empty sensor lists or null readings mean unavailable."""
     return await asyncio.to_thread(snapshot, section)

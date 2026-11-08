@@ -3,9 +3,10 @@ from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
+# Convert a local ISO date and time between IANA zones such as America/Chicago and
+# Europe/London. Choose an occurrence for repeated times.
 def convert_timezone(local_datetime: str, from_zone: str, to_zone: str,
                      occurrence: Literal["earlier", "later"] | None = None) -> dict:
-    """Convert a local ISO date and time between IANA zones such as America/Chicago and Europe/London. Choose an occurrence for repeated times."""
     if "T" not in local_datetime and " " not in local_datetime:
         raise ValueError("Include both the date and the time.")
     local = datetime.fromisoformat(local_datetime)

@@ -28,8 +28,9 @@ def resolve(label: str) -> str:
     return unit
 
 
+# Convert common length, mass, volume, temperature or duration units. Cooking volumes use US
+# customary measures.
 def convert_units(value: float, from_unit: str, to_unit: str) -> dict:
-    """Convert common length, mass, volume, temperature or duration units. Cooking volumes use US customary measures."""
     if not isfinite(value):
         raise ValueError("Provide a finite number.")
     source, target = resolve(from_unit), resolve(to_unit)

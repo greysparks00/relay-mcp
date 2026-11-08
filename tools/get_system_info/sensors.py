@@ -1,4 +1,4 @@
-"""Read optional hardware sensors without elevation or driver installation."""
+# Read optional hardware sensors without elevation or driver installation.
 
 import csv
 import json
@@ -94,8 +94,8 @@ def windows_sensors() -> dict:
         return data
 
 
+# Some ARM boards expose CPU temperatures through thermal zones only.
 def linux_cpu_zones(root: Path = Path("/sys/class/thermal")) -> list[dict]:
-    """Some ARM boards expose CPU temperatures through thermal zones only."""
     readings = []
     for zone in sorted(root.glob("thermal_zone*")):
         try:

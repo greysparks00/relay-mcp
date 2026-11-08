@@ -1,6 +1,7 @@
-"""Each public subfolder supplies tool.py with a function named after the folder."""
+# Each public subfolder supplies tool.py with a function named after the folder.
 
 from importlib import import_module
+from inspect import getcomments
 import logging
 from pathlib import Path
 
@@ -22,7 +23,12 @@ def load_tools(server: MCPServer) -> list[str]:
             handler = getattr(module, folder.name)
             if not callable(handler):
                 raise ValueError(f"Expected callable {folder.name}()")
-            server.tool(name=folder.name)(handler)
+            # Tool modules are loaded from .py files. The comment immediately above
+            # the handler supplies its public MCP description, including tools/list.
+            # Join wrapped comment lines so clients get one natural-language string.
+            comments = getcomments(handler) or ""
+            description = " ".join(line.lstrip("#").strip() for line in comments.splitlines())
+            server.tool(name=folder.name, description=description or None)(handler)
         except Exception:
             logging.exception("Failed to load tool %s", folder.name)
             failed.append(folder.name)
