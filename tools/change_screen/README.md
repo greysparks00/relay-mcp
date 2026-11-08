@@ -1,15 +1,13 @@
 # Sending content to a screen
 
-Relay calls `change_screen(id=1, content="dashboard")`. The MCP tool sends one request to the separate screen server:
+Relay calls `change_screen(id=1, screen={"type":"text","content":"Hello"})`. The MCP tool sends one request to the separate screen server:
 
 ```http
 POST /v1/screens/send
 Content-Type: application/json
 
-{"id":1,"content":"dashboard"}
+{"id":1,"screen":{"type":"text","content":"Hello"}}
 ```
-
-Content is an opaque string of up to 8192 characters. It can be empty, a known view such as `google_calendar_view`, or a request such as `Compare a 3060 Ti and a 4060 Ti`. The MCP tool passes it unchanged. The display client decides how to interpret it.
 
 In `relay-mcp/.env`, set `RELAY_DISPLAY_URL` to the server origin; it defaults to `http://127.0.0.1:8766` on the Pi. Remote origins use HTTPS. Set `RELAY_DISPLAY_TOKEN` to supply the sender's bearer credential.
 
@@ -23,3 +21,5 @@ The sibling project `relay-displays` implements this protocol. Its README covers
 4. If the screen ID has no active connection, discard the request and return HTTP 409. A failed connection leaves delivery unconfirmed; Relay does not retry or queue the POST.
 
 The initial screen page displays the raw JSON with textContent. Template rendering belongs to a future version of that page.
+
+The screen object is either `{"type":"text","content":"..."}` or `{"type":"comparison","option1":"...","option2":"..."}`. The agent writes the display copy. Each text field accepts up to 8192 characters. Comparison options must be nonempty.

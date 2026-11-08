@@ -4,13 +4,29 @@ import asyncio
 from http.client import HTTPConnection, HTTPException, HTTPSConnection
 import json
 import os
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
-def send_content(screen_id: int, content: str) -> dict:
+DisplayText = Annotated[str, Field(max_length=8192)]
+
+
+class TextScreen(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: Literal["text"]
+    content: DisplayText
+
+
+class ComparisonScreen(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: Literal["comparison"]
+    option1: Annotated[str, Field(min_length=1, max_length=8192)]
+    option2: Annotated[str, Field(min_length=1, max_length=8192)]
+
+
+def send_content(screen_id: int, screen: TextScreen | ComparisonScreen) -> dict:
     url = urlsplit(os.environ.get("RELAY_DISPLAY_URL") or "http://127.0.0.1:8766")
     if (url.scheme not in {"http", "https"} or not url.hostname or url.username is not None
             or url.password is not None or url.query or url.fragment or url.path not in {"", "/"}):
@@ -23,7 +39,7 @@ def send_content(screen_id: int, content: str) -> dict:
 
     connection = (HTTPSConnection if url.scheme == "https" else HTTPConnection)(url.hostname, url.port, timeout=5)
     try:
-        body = json.dumps({"id": screen_id, "content": content}, ensure_ascii=False).encode("utf-8")
+        body = json.dumps({"id": screen_id, "screen": screen.model_dump()}, ensure_ascii=False).encode("utf-8")
         connection.request("POST", "/v1/screens/send", body, headers)
         response = connection.getresponse()
         if response.status == 409:
@@ -49,6 +65,6 @@ def send_content(screen_id: int, content: str) -> dict:
 
 
 async def change_screen(id: Annotated[int, Field(gt=0, le=2147483647)],
-                        content: Annotated[str, Field(max_length=8192)] = "") -> dict:
-    """Send literal content to a registered screen by ID. Content may be a view name such as dashboard, a free-form request, or empty. Offline requests are discarded."""
-    return await asyncio.to_thread(send_content, id, content)
+                        screen: TextScreen | ComparisonScreen) -> dict:
+    """Choose text for explanations or messages, comparison for two alternatives. Use {"type":"text","content":"..."} or {"type":"comparison","option1":"...","option2":"..."}. Fill the fields with display-ready answers on any topic and name each alternative."""
+    return await asyncio.to_thread(send_content, id, screen)
